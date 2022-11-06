@@ -1,9 +1,8 @@
-version: '3.4'
+version: '3'
 
 services:
   db:
-    #image: mariadb:10.5
-    image: arm64v8/mariadb:10.8
+    image: mariadb:10.5
     #command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
     #command: '--default-authentication-plugin=mysql_native_password'   
     command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
@@ -50,43 +49,36 @@ services:
       - redis
 
   web:
-    build: 
-      context: ./web
-      args:
-      - CERTBOT_EMAIL=wendellxj@hotmail.com #replace with your own email
-      - DOMAIN_LIST=tecws.com.br,api.tecws.com,www.tecws.com.br #replace 
+    build: ./web
     restart: always
-    container_name: nginx
     ports:
       - 8060:80
-      - 4443:443    
     volumes:
       - nextcloud:/var/www/html:ro
-      - letsencrypt:/etc/letsencrypt
     depends_on:
       - app
 
-  #cron:
-  #  image: nextcloud:fpm-alpine
-  #  restart: always
-  #  volumes:
-  #    - nextcloud:/var/www/html
-  #  entrypoint: /cron.sh
-  #  depends_on:
-  #    - db
-  #    - redis
+  cron:
+    image: nextcloud:fpm-alpine
+    restart: always
+    volumes:
+      - nextcloud:/var/www/html
+    entrypoint: /cron.sh
+    depends_on:
+      - db
+      - redis
 
 
 
-  #certbot:
-  #  depends_on:
-  #    - web
-  #  image: certbot/certbot:latest
-  #  container_name: certbot
-  #  volumes:
-  #    - certbot-crt:/etc/letsencrypt
-  #    - nextcloud:/var/www/html:rw,cached
-  #  command: certonly --webroot --webroot-path=/var/www/html --email wendell@hotmail.com --agree-tos --no-eff-email --staging -d tecws.com.br -d www.tecws.com.br
+  certbot:
+    depends_on:
+      - web
+    image: certbot/certbot:latest
+    container_name: certbot
+    volumes:
+      - certbot-crt:/etc/letsencrypt
+      - nextcloud:/var/www/html:rw,cached
+    command: certonly --webroot --webroot-path=/var/www/html --email wendell@hotmail.com --agree-tos --no-eff-email --staging -d tecws.com.br -d www.tecws.com.br
 
 
 
@@ -98,6 +90,4 @@ services:
 volumes:
   data:
   nextcloud:
-  #certbot-crt:
-  letsencrypt:
-  
+  certbot-crt:
