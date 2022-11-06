@@ -1,0 +1,93 @@
+version: '3'
+
+services:
+  db:
+    image: mariadb:10.5
+    #command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    #command: '--default-authentication-plugin=mysql_native_password'   
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    restart: always
+    volumes:
+      - data:/var/lib/mysql
+    ports:
+      # <Port exposed> : < MySQL Port running inside container>
+      - '3336:3306'
+    expose:
+      # Opens port 3306 on the container
+      - '3336'    
+    environment:
+      - MARIADB_ROOT_PASSWORD=nextcloud
+      - MARIADB_PASSWORD=nextcloud
+      - MARIADB_DATABASE=nextcloud
+      - MARIADB_USER=nextcloud
+      #- MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+      #- MARIADB_DATABASE=${MARIADB_DATABASE}
+      #- MARIADB_USER=${MARIADB_USER}
+      #- MARIADB_PASSWORD=${MARIADB_PASSWORD}
+      #- MARIADB_AUTO_UPGRADE=1
+      #- MARIADB_DISABLE_UPGRADE_BACKUP=1   
+    env_file:
+      - db.env 
+   
+
+  redis:
+    image: redis:alpine
+    restart: always
+
+  app:
+    image: nextcloud:fpm-alpine
+    restart: always
+    volumes:
+      - nextcloud:/var/www/html
+    environment:
+      - MYSQL_HOST=db
+      - REDIS_HOST=redis
+    env_file:
+      - db.env
+    depends_on:
+      - db
+      - redis
+
+  web:
+    build: ./web
+    restart: always
+    ports:
+      - 8060:80
+    volumes:
+      - nextcloud:/var/www/html:ro
+    depends_on:
+      - app
+
+  cron:
+    image: nextcloud:fpm-alpine
+    restart: always
+    volumes:
+      - nextcloud:/var/www/html
+    entrypoint: /cron.sh
+    depends_on:
+      - db
+      - redis
+
+
+
+  certbot:
+    depends_on:
+      - web
+    image: certbot/certbot:latest
+    container_name: certbot
+    volumes:
+      - certbot-crt:/etc/letsencrypt
+      - nextcloud:/var/www/html:rw,cached
+    command: certonly --webroot --webroot-path=/var/www/html --email wendell@hotmail.com --agree-tos --no-eff-email --staging -d tecws.com.br -d www.tecws.com.br
+
+
+
+
+
+
+
+
+volumes:
+  data:
+  nextcloud:
+  certbot-crt:
